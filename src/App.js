@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 import "./App.css";
 import { getAllStudents } from "./client";
-
-import { Table, Avatar, Spin, Modal } from "antd";
+import { errorNotification } from "./Notification";
+import { Table, Avatar, Spin, Modal, Empty } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
 import Container from "./container";
 import Footer from "./Footer";
@@ -31,18 +31,54 @@ class App extends Component {
     this.setState({
       isFetching: true
     });
-    getAllStudents().then(res =>
-      res.json().then(students => {
+    getAllStudents()
+      .then(res =>
+        res.json().then(students => {
+          this.setState({
+            students,
+            isFetching: false
+          });
+        })
+      )
+      .catch(error => {
+        const errorMessage = error.error.message;
+        const errorDescription = error.error.error;
+        errorNotification(errorMessage, errorDescription);
         this.setState({
-          students,
           isFetching: false
         });
-      })
-    );
+      });
   };
 
   render() {
     const { students, isFetching, isAddStudentModalVisible } = this.state;
+    const commonElements = () => (
+      <div>
+      <Modal
+      title="Add new Student"
+      visible={isAddStudentModalVisible}
+      onOk={this.closeAddStudentModal}
+      onCancel={this.closeAddStudentModal}
+      width={1000}
+    >
+      <AddStudentForm
+        onSuccess={() => {
+          this.closeAddStudentModal();
+          this.fetchStudents();
+        }}
+        onFailure = {(err) => {
+          const errorMessage = err.error.message;
+        const errorDescription = err.error.httpStatus;
+          errorNotification(errorMessage, errorDescription);
+        }}
+      />
+    </Modal>
+    <Footer
+      handleAddStudentClickEvent={this.openAddStudentModal}
+      numberOfStudents={students.length}
+    />
+    </div>
+    )
     if (isFetching) {
       return (
         <Container>
@@ -99,24 +135,16 @@ class App extends Component {
             pagination={false}
             rowKey="studentId"
           />
-          <Modal
-            title="Add new Student"
-            visible={isAddStudentModalVisible}
-            onOk={this.closeAddStudentModal}
-            onCancel={this.closeAddStudentModal}
-            width={1000}
-          >
-            <AddStudentForm
-            onSuccess = {() => {this.closeAddStudentModal(); this.fetchStudents()}} />
-          </Modal>
-          <Footer
-            handleAddStudentClickEvent={this.openAddStudentModal}
-            numberOfStudents={students.length}
-          />
+         {commonElements()}
         </Container>
       );
     }
-    return <h1>No Students Found</h1>;
+    return (
+      <Container>
+        <Empty description={<h1>No Students found</h1>} />
+        {commonElements()}
+      </Container>
+    );
   }
 }
 
